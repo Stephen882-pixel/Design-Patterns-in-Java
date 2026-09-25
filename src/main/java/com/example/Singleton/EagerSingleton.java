@@ -1,4 +1,4 @@
-package com.example;
+package com.example.Singleton;
 
 public class EagerSingleton {
 
