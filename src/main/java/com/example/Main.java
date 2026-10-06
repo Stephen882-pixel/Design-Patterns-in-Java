@@ -1,6 +1,11 @@
 package com.example;
 
 
+import com.example.AbstractFactory.Car;
+import com.example.AbstractFactory.CarFactory;
+import com.example.AbstractFactory.CarSpecification;
+import com.example.AbstractFactory.EuropeCarFactory;
+import com.example.AbstractFactory.NorthAmericaCarFactory;
 import com.example.Singleton.DoubleCheckingSingleton;
 import com.example.Singleton.EagerSingleton;
 import com.example.Singleton.LazySingleton;
@@ -25,5 +30,18 @@ public class Main {
         DoubleCheckingSingleton obj6 = DoubleCheckingSingleton.getInstance();
         System.out.println(obj5.hashCode());
         System.out.println(obj6.hashCode());
+        System.out.println("===========================");
+        System.out.println("Abstract Factory");
+        CarFactory northAmericaFactory = new NorthAmericaCarFactory();
+        Car northAmericaCar = northAmericaFactory.createCar();
+        CarSpecification northAmericaSpec = northAmericaFactory.createCarSpecification();
+        northAmericaCar.assemble();
+        northAmericaSpec.display();
+
+        CarFactory europeFactory = new EuropeCarFactory();
+        Car europeCar = europeFactory.createCar();
+        CarSpecification europeSpec = europeFactory.createCarSpecification();
+        europeCar.assemble();
+        europeSpec.display();
     }
 }
