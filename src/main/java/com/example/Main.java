@@ -1,6 +1,7 @@
 package com.example;
 
 
+import com.example.AbstractFactory.AfricaCarFactory;
 import com.example.AbstractFactory.Car;
 import com.example.AbstractFactory.CarFactory;
 import com.example.AbstractFactory.CarSpecification;
@@ -13,20 +14,36 @@ import com.example.BuilderPattern.classic.ComputerDirector;
 import com.example.BuilderPattern.classic.GamingComputerBuilder;
 import com.example.BuilderPattern.classic.OfficeComputerBuilder;
 import com.example.BuilderPattern.fluent.Laptop;
+import com.example.FactoryMethod.EmailService;
+import com.example.FactoryMethod.NotificationService;
+import com.example.FactoryMethod.PushService;
+import com.example.FactoryMethod.SmsService;
+import com.example.PrototypeDesignPattern.BotRegistry;
+import com.example.PrototypeDesignPattern.GameBotCharacters;
+import com.example.Singleton.BillPughSingleton;
+import com.example.Singleton.Calculator;
 import com.example.Singleton.DoubleCheckingSingleton;
 import com.example.Singleton.EagerSingleton;
+import com.example.Singleton.EnumSingleton;
 import com.example.Singleton.LazySingleton;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CountDownLatch;
+import java.util.function.Supplier;
 
 public class Main {
     public static void main(String[] args) {
-        // Uncomment the pattern you want to demo
-   //     singletonDemo();
- //       abstractFactoryDemo();
-     //   classicBuilderDemo();
-        fluentBuilderDemo();
+        // Uncomment the pattern you want to demo (in talk order)
+        singletonDemo();
+//        factoryMethodDemo();
+//        abstractFactoryDemo();
+//        classicBuilderDemo();
+//        fluentBuilderDemo();
+//        prototypeDemo();
     }
 
     // ======================================================================
@@ -35,23 +52,85 @@ public class Main {
     private static void singletonDemo() {
         printTitle("SINGLETON DESIGN PATTERN");
 
-        printSection("Eager Singleton");
-        EagerSingleton obj1 = EagerSingleton.getInstance();
-        EagerSingleton obj2 = EagerSingleton.getInstance();
-        System.out.println(obj1.hashCode());
-        System.out.println(obj2.hashCode());
+        printSection("1. Eager Singleton");
+        System.out.println("Same object? " + (EagerSingleton.getInstance() == EagerSingleton.getInstance()));
 
-        printSection("Lazy Singleton");
-        LazySingleton obj3 = LazySingleton.getInstance();
-        LazySingleton obj4 = LazySingleton.getInstance();
-        System.out.println(obj3.hashCode());
-        System.out.println(obj4.hashCode());
+        printSection("2. Lazy Singleton (synchronized)");
+        System.out.println("Same object? " + (LazySingleton.getInstance() == LazySingleton.getInstance()));
 
-        printSection("Double Checking Singleton");
-        DoubleCheckingSingleton obj5 = DoubleCheckingSingleton.getInstance();
-        DoubleCheckingSingleton obj6 = DoubleCheckingSingleton.getInstance();
-        System.out.println(obj5.hashCode());
-        System.out.println(obj6.hashCode());
+        printSection("3. Double-Checked Locking");
+        System.out.println("Same object? " + (DoubleCheckingSingleton.getInstance() == DoubleCheckingSingleton.getInstance()));
+
+        printSection("4. Bill Pugh (Holder class)");
+        System.out.println("Same object? " + (BillPughSingleton.getInstance() == BillPughSingleton.getInstance()));
+
+        printSection("5. Enum Singleton: shared state");
+        System.out.println("Customer A gets ticket #" + EnumSingleton.INSTANCE.nextTicket());
+        System.out.println("Customer B gets ticket #" + EnumSingleton.INSTANCE.nextTicket());
+        System.out.println("Customer C gets ticket #" + EnumSingleton.INSTANCE.nextTicket());
+
+        printSection("6. The Race: 10 threads, naive lazy vs thread-safe");
+        // Tweak this and re-run
+        int threads = 10;
+        System.out.println("Naive (Calculator):     " + countInstances(threads, Calculator::getInstance) + " different object(s)");
+        System.out.println("Thread-safe (BillPugh): " + countInstances(threads, BillPughSingleton::getInstance) + " different object(s)");
+    }
+
+    // Calls getInstance() from many threads at the same moment and counts the distinct objects returned
+    private static int countInstances(int threads, Supplier<Object> getInstance) {
+        Set<Object> instances = ConcurrentHashMap.newKeySet();
+        CountDownLatch startGun = new CountDownLatch(1);
+        List<Thread> workers = new ArrayList<>();
+        for (int i = 0; i < threads; i++) {
+            Thread t = new Thread(() -> {
+                try {
+                    startGun.await();
+                } catch (InterruptedException e) {
+                    return;
+                }
+                instances.add(getInstance.get());
+            });
+            t.start();
+            workers.add(t);
+        }
+        startGun.countDown();
+        for (Thread t : workers) {
+            try {
+                t.join();
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+        }
+        return instances.size();
+    }
+
+    // ======================================================================
+    // FACTORY METHOD
+    // ======================================================================
+    private static void factoryMethodDemo() {
+        printTitle("FACTORY METHOD DESIGN PATTERN");
+
+        printSection("1. Each service creates its own kind of notification");
+        new EmailService().notifyUser("Your invoice is ready");
+        new SmsService().notifyUser("Your invoice is ready");
+        new PushService().notifyUser("Your invoice is ready");
+
+        printSection("2. Picking the service at runtime (e.g. from user settings)");
+        // Tweak these and re-run
+        List<Map.Entry<String, String>> preferredChannel = List.of(
+                Map.entry("Alice", "email"),
+                Map.entry("Brian", "sms"),
+                Map.entry("Wanjiku", "push")
+        );
+        for (Map.Entry<String, String> user : preferredChannel) {
+            NotificationService service = switch (user.getValue()) {
+                case "email" -> new EmailService();
+                case "sms" -> new SmsService();
+                case "push" -> new PushService();
+                default -> throw new IllegalArgumentException("Unknown channel " + user.getValue());
+            };
+            service.notifyUser("Hi " + user.getKey() + ", your payment was received");
+        }
     }
 
     // ======================================================================
@@ -60,19 +139,33 @@ public class Main {
     private static void abstractFactoryDemo() {
         printTitle("ABSTRACT FACTORY DESIGN PATTERN");
 
-        printSection("North America Factory");
-        CarFactory northAmericaFactory = new NorthAmericaCarFactory();
-        Car northAmericaCar = northAmericaFactory.createCar();
-        CarSpecification northAmericaSpec = northAmericaFactory.createCarSpecification();
-        northAmericaCar.assemble();
-        northAmericaSpec.display();
+        printSection("1. North America Factory");
+        deliverCar(new NorthAmericaCarFactory());
 
-        printSection("Europe Factory");
-        CarFactory europeFactory = new EuropeCarFactory();
-        Car europeCar = europeFactory.createCar();
-        CarSpecification europeSpec = europeFactory.createCarSpecification();
-        europeCar.assemble();
-        europeSpec.display();
+        printSection("2. Europe Factory");
+        deliverCar(new EuropeCarFactory());
+
+        printSection("3. Africa Factory (added later, client code unchanged)");
+        deliverCar(new AfricaCarFactory());
+
+        printSection("4. Picking the factory from configuration");
+        // Tweak this and re-run: "north-america", "europe" or "africa"
+        String region = "africa";
+        CarFactory factory = switch (region) {
+            case "north-america" -> new NorthAmericaCarFactory();
+            case "europe" -> new EuropeCarFactory();
+            case "africa" -> new AfricaCarFactory();
+            default -> throw new IllegalArgumentException("Unknown region " + region);
+        };
+        deliverCar(factory);
+    }
+
+    // The client: only knows the interfaces, never Sedan, Hatchback or Pickup
+    private static void deliverCar(CarFactory factory) {
+        Car car = factory.createCar();
+        CarSpecification spec = factory.createCarSpecification();
+        car.assemble();
+        spec.display();
     }
 
     // ======================================================================
@@ -180,6 +273,65 @@ public class Main {
         System.out.println("Base:    " + base);
         System.out.println("Dev:     " + devVariant);
         System.out.println("Gaming:  " + gamingVariant);
+    }
+
+    // ======================================================================
+    // PROTOTYPE
+    // ======================================================================
+    private static void prototypeDemo() {
+        printTitle("PROTOTYPE DESIGN PATTERN");
+        // Tweak these and re-run
+        int numberOfBots = 5;
+
+        printSection("1. The Expensive Way: new for every bot");
+        long start = System.currentTimeMillis();
+        for (int i = 0; i < numberOfBots; i++) {
+            new GameBotCharacters("Bot" + i, 100, 0, new ArrayList<>(List.of("Rifle")));
+        }
+        System.out.println((System.currentTimeMillis() - start) + " ms to create " + numberOfBots + " bots with new");
+
+        printSection("2. The Prototype Way: create once, clone the rest");
+        start = System.currentTimeMillis();
+        GameBotCharacters original = new GameBotCharacters("Bot1", 100, 0, new ArrayList<>(List.of("Rifle")));
+        List<GameBotCharacters> bots = new ArrayList<>();
+        bots.add(original);
+        for (int i = 1; i < numberOfBots; i++) {
+            GameBotCharacters clone = original.customizeClone();
+            clone.setName("Bot" + (i + 1));
+            clone.setHealth(100 + i * 50);
+            clone.setAttackPower(i * 10);
+            bots.add(clone);
+        }
+        System.out.println((System.currentTimeMillis() - start) + " ms to create " + numberOfBots + " bots with clone");
+        bots.forEach(System.out::println);
+
+        printSection("3. Deep Copy: changing the original doesn't touch the clones");
+        GameBotCharacters deepClone = original.customizeClone();
+        original.getWeapons().add("Grenade");
+        System.out.println("Original:    " + original.getWeapons());
+        System.out.println("Deep clone:  " + deepClone.getWeapons());
+
+        printSection("4. Shallow Copy Bug: the list is shared");
+        GameBotCharacters shallowClone = original.shallowClone();
+        original.getWeapons().add("Rocket Launcher");
+        System.out.println("Original:      " + original.getWeapons());
+        System.out.println("Shallow clone: " + shallowClone.getWeapons() + "  <-- got the rocket launcher too!");
+        System.out.println("Same list? " + (original.getWeapons() == shallowClone.getWeapons()));
+
+        printSection("5. Prototype Registry: a shelf of ready-made templates");
+        BotRegistry registry = new BotRegistry();
+        registry.addTemplate("sniper", new GameBotCharacters("Sniper", 80, 90, new ArrayList<>(List.of("Sniper Rifle"))));
+        registry.addTemplate("tank", new GameBotCharacters("Tank", 500, 20, new ArrayList<>(List.of("Shotgun", "Shield"))));
+
+        GameBotCharacters sniperA = registry.get("sniper");
+        sniperA.setName("Sniper-Alpha");
+        GameBotCharacters sniperB = registry.get("sniper");
+        sniperB.setName("Sniper-Bravo");
+        GameBotCharacters tank = registry.get("tank");
+        tank.setName("Tank-Charlie");
+        System.out.println(sniperA);
+        System.out.println(sniperB);
+        System.out.println(tank);
     }
 
     // ======================================================================

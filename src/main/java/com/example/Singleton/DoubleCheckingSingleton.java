@@ -2,17 +2,21 @@ package com.example.Singleton;
 
 public class DoubleCheckingSingleton {
 
-    private static  DoubleCheckingSingleton instance;
+    // volatile: makes sure other threads never see a half-built object
+    private static volatile DoubleCheckingSingleton instance;
 
-    public static  DoubleCheckingSingleton getInstance(){
-        if(instance == null){
-            synchronized (DoubleCheckingSingleton.class){
-                if(instance == null){
+    private DoubleCheckingSingleton() {
+
+    }
+
+    public static DoubleCheckingSingleton getInstance() {
+        if (instance == null) {                              // 1st check: no lock (fast path)
+            synchronized (DoubleCheckingSingleton.class) {
+                if (instance == null) {                      // 2nd check: with the lock
                     instance = new DoubleCheckingSingleton();
                 }
             }
         }
-            return instance;
+        return instance;
     }
 }
-
