@@ -26,6 +26,7 @@ import com.example.Singleton.DoubleCheckingSingleton;
 import com.example.Singleton.EagerSingleton;
 import com.example.Singleton.EnumSingleton;
 import com.example.Singleton.LazySingleton;
+import java.sql.Connection;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -38,12 +39,13 @@ import java.util.function.Supplier;
 public class Main {
     public static void main(String[] args) {
         // Uncomment the pattern you want to demo (in talk order)
-        singletonDemo();
+       singletonDemo();
 //        factoryMethodDemo();
 //        abstractFactoryDemo();
 //        classicBuilderDemo();
 //        fluentBuilderDemo();
 //        prototypeDemo();
+        //JDBCConnectionPool pool = new JDBCConnectionPool()
     }
 
     // ======================================================================
